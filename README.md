@@ -1,8 +1,4 @@
-# terraform-eks-ArgoCD-platform
-
-
-
-# Terraform EKS Platform
+# Terraform EKS Argo CD Platform
 
 This repository provisions the foundational AWS infrastructure for a Kubernetes platform using Terraform. It creates a VPC and an Amazon EKS cluster with the required networking and IAM integration, and it is intentionally designed as the base layer for later platform add-ons such as Argo CD, cert-manager, external-dns, ALB ingress controller, EFS CSI, Gateway API, and Karpenter.
 
@@ -57,7 +53,11 @@ This is the first step in a broader platform architecture where the cluster is b
 ## Project structure
 
 ```text
-terraform-eks-platform/
+terraform-eks-ArgoCD-platform/
+├── .github/
+│   └── workflows/
+│       └── terraform-ci.yml
+├── .terraform.lock.hcl
 ├── README.md
 ├── main.tf
 ├── providers.tf
@@ -78,14 +78,13 @@ terraform-eks-platform/
 │       ├── main.tf
 │       ├── outputs.tf
 │       └── variables.tf
-└── terraform-eks-ArgoCD-platform/    # duplicate/staging copy; can be ignored unless needed
 ```
 
 ## Prerequisites
 
 Before running this project, make sure you have:
 
-- Terraform installed
+- Terraform 1.6.6 or later
 - AWS CLI installed and configured
 - valid AWS credentials for the target account/region
 - `kubectl` installed to interact with the cluster
@@ -129,6 +128,12 @@ Then apply the remaining configuration:
 terraform apply -var-file=envs/dev/terraform.tfvars
 ```
 
+The development `terraform.tfvars` file is excluded from version control. Create
+it locally with the values for your environment (for example, `region` and
+`cluster_name`) before using the commands above. Do not put credentials or
+secrets in this file. The project's defaults are used if you choose not to
+provide an environment-specific file.
+
 Configure `kubectl` for the new cluster:
 
 ```bash
@@ -139,6 +144,25 @@ Alternately, the configuration command is exposed as an output via Terraform:
 
 ```bash
 $(terraform output -raw configure_kubectl)
+```
+
+## GitHub Actions
+
+The workflow in `.github/workflows/terraform-ci.yml` runs for pushes, pull
+requests, and manual dispatch. It checks Terraform formatting, initializes
+providers without configuring a backend, and validates the root configuration.
+Provider versions are recorded in `.terraform.lock.hcl`, and CI uses that lock
+file without modifying it.
+
+This workflow is validation-only: it does not authenticate to AWS, create a
+Terraform plan, or apply infrastructure changes.
+
+Run the same checks locally from the repository root:
+
+```bash
+terraform fmt -check -recursive
+terraform init -backend=false -input=false -lockfile=readonly
+terraform validate
 ```
 
 ## Outputs
